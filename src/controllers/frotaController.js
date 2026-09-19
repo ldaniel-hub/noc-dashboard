@@ -7,7 +7,7 @@ class FrotaController {
       // O controlador solicita apenas 500 veículos aleatórios dos 100.000 disponíveis
       const veiculos = await frotaRepository.listarTodos(500);
       return res.status(200).json(veiculos);
-    } catch (error) {
+    } catch {
       return res.status(500).json({ erro: 'Erro interno no servidor.' });
     }
   }
@@ -20,7 +20,7 @@ class FrotaController {
         return res.status(404).json({ mensagem: 'Veículo não encontrado.' });
       }
       return res.status(200).json(veiculo);
-    } catch (error) {
+    } catch {
       return res.status(500).json({ erro: 'Falha na busca.' });
     }
   }
@@ -32,7 +32,7 @@ class FrotaController {
       }
       const novoVeiculo = await frotaRepository.criar(req.body);
       return res.status(201).json(novoVeiculo);
-    } catch (error) {
+    } catch {
       return res.status(500).json({ erro: 'Erro ao inserir. ID duplicado?' });
     }
   }
@@ -44,7 +44,7 @@ class FrotaController {
         return res.status(404).json({ mensagem: 'Veículo inexistente.' });
       }
       return res.status(200).json({ mensagem: 'Telemetria atualizada.' });
-    } catch (error) {
+    } catch {
       return res.status(500).json({ erro: 'Erro no Update SQL.' });
     }
   }
@@ -56,7 +56,7 @@ class FrotaController {
         return res.status(404).json({ mensagem: 'Veículo inexistente.' });
       }
       return res.status(204).send();
-    } catch (error) {
+    } catch {
       return res.status(500).json({ erro: 'Falha ao deletar.' });
     }
   }

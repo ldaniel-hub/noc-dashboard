@@ -101,7 +101,7 @@ try {
   console.log('Migração de geolocalização concluída!');
 } catch (error) {
   console.error('Falha na migração:', error.message);
-  process.exitCode = 1;
+  globalThis.process.exitCode = 1;
 } finally {
   db.close();
 }

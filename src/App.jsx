@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -11,6 +11,10 @@ import {
 import "./App.css";
 import { LinksComunicacao } from "./components/LinksComunicacao";
 import { FrotaCategoria } from "./components/FrotaCategoria";
+import { StatusCard } from "./components/StatusCard";
+import { TelemetryChart } from "./components/TelemetryChart";
+import { FleetTable } from "./components/FleetTable";
+import { useFleetMonitor } from "./hooks/useFleetMonitor";
 const categoriasVeiculos = [
   "Ônibus",
   "Caminhão",
@@ -29,36 +33,45 @@ function DashboardRouter() {
   // 1. Estados originais e novos (API)
   const [dados, setDados] = useState({ infraestrutura: [], frota: [], noc: {} });
   const [carregando, setCarregando] = useState(true);
-  const [statusLinks, setStatusLinks] = useState({
-    1: true,
-    2: true,
-    3: true,
-    4: true,
-    5: true,
-  });
-
-  const toggleLink = (id) =>
-    setStatusLinks((prev) => ({ ...prev, [id]: !prev[id] }));
+  const [erro, setErro] = useState("");
+  const { linksStatus: statusLinks, toggleLink, isCategoryOnline } = useFleetMonitor();
   const navigate = useNavigate();
   const location = useLocation();
   const [tempoRestante, setTempoRestante] = useState(5);
 
-  // 2. NOVO: Consumo da API REST
   useEffect(() => {
-    fetch("http://localhost:3000/api/dados")
-      .then((response) => response.json())
-      .then((data) => {
+    let ativo = true;
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+    const carregarDados = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/api/dados`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (!ativo) return;
         setDados(data);
-        setCarregando(false);
-      })
-      .catch((error) => {
-        console.error(
-          "Falha ao comunicar com o servidor de banco de dados:",
-          error,
-        );
-        setCarregando(false);
-      });
+        setErro("");
+      } catch (error) {
+        console.error("Falha ao comunicar com o servidor de banco de dados:", error);
+        if (ativo) setErro("Não foi possível atualizar os dados do NOC.");
+      } finally {
+        if (ativo) setCarregando(false);
+      }
+    };
+
+    carregarDados();
+    const intervalo = setInterval(carregarDados, 30000);
+    return () => {
+      ativo = false;
+      clearInterval(intervalo);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!dados.frota.length) return;
+    const traceId = Math.random().toString(16).slice(2);
+    console.log(`[OTel] TraceID: ${traceId} - Atualizando telemetria da frota...`);
+  }, [dados.frota]);
 
   // 3. Mantido: Roteamento Temporizado
   useEffect(() => {
@@ -71,7 +84,7 @@ function DashboardRouter() {
       );
       const proximoIndice = (indiceAtual + 1) % rotasDisponiveis.length;
       navigate(rotasDisponiveis[proximoIndice]);
-      setTempoRestante(5);
+      setTimeout(() => setTempoRestante(5), 0);
     }
   }, [tempoRestante, location.pathname, navigate]);
 
@@ -87,9 +100,13 @@ function DashboardRouter() {
     );
   }
 
+  const veiculosOffline = dados.frota.filter((veiculo) => !isCategoryOnline(veiculo.tipo)).length;
+  const linksOnline = Object.values(statusLinks).filter(Boolean).length;
+
   // 5. Mantido: Renderização do Layout com a Navbar original e dados dinâmicos
   return (
     <div>
+      {erro && <div className="alert alert-warning rounded-0 mb-0 text-center">{erro}</div>}
       <nav className="navbar navbar-dark bg-black bg-opacity-75 shadow-lg border-bottom border-info sticky-top">
         <div className="container-fluid flex-column align-items-start px-3 py-2">
           <div className="d-flex w-100 justify-content-between align-items-center mb-3">
@@ -146,17 +163,20 @@ function DashboardRouter() {
           <Route
             path="/"
             element={
-              <LinksComunicacao
-                dados={dados.infraestrutura}
-                statusLinks={statusLinks}
-                toggleLink={toggleLink}
-              />
+              <>
+                <div className="container-fluid px-4 mt-4"><div className="row g-3 mb-4">
+                  <div className="col-12 col-md-4"><StatusCard label="Uptime dos links" value={`${linksOnline}/5`} subtext="Canais operacionais" icon="◉" variant={linksOnline === 5 ? "success" : "warning"} /></div>
+                  <div className="col-12 col-md-4"><StatusCard label="Veículos monitorados" value={dados.frota.length} subtext="Telemetria recebida do SQLite" icon="▣" variant="success" /></div>
+                  <div className="col-12 col-md-4"><StatusCard label="Alertas ativos" value={veiculosOffline} subtext="Veículos afetados por dependências" icon="⚠" variant={veiculosOffline ? "danger" : "success"} /></div>
+                </div><TelemetryChart fleet={dados.frota} /><FleetTable fleet={dados.frota} isCategoryOnline={isCategoryOnline} /></div>
+                <LinksComunicacao dados={dados.infraestrutura} statusLinks={statusLinks} toggleLink={toggleLink} />
+              </>
             }
           />
           <Route
             path="/frota/:categoria"
             element={
-              <FrotaCategoria frota={dados.frota} statusLinks={statusLinks} />
+              <FrotaCategoria frota={dados.frota} statusLinks={statusLinks} isCategoryOnline={isCategoryOnline} />
             }
           />
         </Routes>

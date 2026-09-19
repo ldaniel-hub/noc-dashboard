@@ -1,7 +1,7 @@
 // src/components/FrotaCategoria.jsx 
-import React, { useEffect } from 'react';  
+import { useEffect } from 'react';  
 import { useParams } from 'react-router-dom';  
-export function FrotaCategoria({ frota, statusLinks }) {  
+export function FrotaCategoria({ frota, statusLinks, isCategoryOnline }) {  
  // A categoria agora é capturada dinamicamente pela URL (Rota) 
  const { categoria } = useParams();  
  const veiculosExibidos = frota.filter(v => v.tipo === categoria);  
@@ -28,14 +28,14 @@ export function FrotaCategoria({ frota, statusLinks }) {
  intervalId = setInterval(() => {  
  isHigh = !isHigh;  
  if(osc) osc.frequency.setValueAtTime(isHigh ? 960 : 700, audioCtx.currentTime);   }, 500);  
- } catch (e) {  
+ } catch {  
  console.warn("Áudio bloqueado. Interaja com a página primeiro.");  
  }  
  }  
  // Cleanup Component 
  return () => {  
  if (intervalId) clearInterval(intervalId);  
- if (osc) { try { osc.stop(); osc.disconnect(); } catch(e){} }  
+ if (osc) { try { osc.stop(); osc.disconnect(); } catch { console.warn("Falha ao encerrar áudio."); } }  
  if (audioCtx && audioCtx.state !== 'closed') { audioCtx.close(); }  
  };  
  }, [categoria]);  
@@ -45,7 +45,7 @@ export function FrotaCategoria({ frota, statusLinks }) {
  if (categoria === "Caminhão") { dependeciaId = 2; nomeLink = "Link VSAT BGAN"; }   else if (categoria === "Ônibus") { dependeciaId = 4; nomeLink = "Sessão BGP"; }   else if (categoria === "Moto") { dependeciaId = 5; nomeLink = "LTE-Móvel"; }  
  else if (categoria === "Carro" || categoria === "Caminhonete") { dependeciaId = 1; nomeLink = "Link VSAT  Principal"; }  
   
- const linkCategoriaOnline = statusLinks[dependeciaId];  
+ const linkCategoriaOnline = isCategoryOnline ? isCategoryOnline(categoria) : statusLinks[dependeciaId];  
  return (  
  <div className="container-fluid px-4 mt-4">  
  <div className="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2  mb-4">  
@@ -55,11 +55,7 @@ export function FrotaCategoria({ frota, statusLinks }) {
   
  <div className="row">  
  {veiculosExibidos.map((veiculo, index) => { 
- let veiculoAtivo = true;  
- if (veiculo.tipo === "Carro" || veiculo.tipo === "Caminhonete") { veiculoAtivo = statusLinks[1]; }   else if (veiculo.tipo === "Caminhão") { veiculoAtivo = statusLinks[2]; }  
- else if (veiculo.tipo === "Ônibus") { veiculoAtivo = statusLinks[4]; }  
- else if (veiculo.tipo === "Moto") { veiculoAtivo = statusLinks[5]; }  
- else { veiculoAtivo = statusLinks[3]; }  
+ const veiculoAtivo = isCategoryOnline ? isCategoryOnline(veiculo.tipo) : statusLinks[dependeciaId];  
  const combustivel = 100 - (index * 15);  
  // Coordenadas e horário de sincronização vindos do SQLite.
  const urlMapa = `https://www.google.com/maps/search/?api=1&query=${veiculo.latitude},${veiculo.longitude}`;

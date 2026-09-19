@@ -1,16 +1,16 @@
-# React + Vite
+# NOC Command Center
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Dashboard de monitoramento de conectividade e telemetria de frota, com frontend Vite/React e API Express/SQLite.
 
-Currently, two official plugins are available:
+## Desenvolvimento local
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Instale as dependências com `npm install`.
+2. Copie `.env.example` para `.env` e ajuste as URLs quando necessário.
+3. Inicie o frontend com `npm run dev`.
+4. Inicie a API com `node src/backend/server.js`.
 
-## React Compiler
+## Deploy
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Na Vercel, configure o comando `npm run build`, o diretório `dist` e a variável `VITE_API_URL` apontando para a API publicada. No servidor Express, configure `PORT` e `CORS_ORIGIN` com a origem pública do frontend. O frontend revalida os dados a cada 30 segundos.
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+O banco SQLite local não é persistente em ambientes serverless. Para produção, publique a API em um serviço com armazenamento persistente ou migre o repositório para um banco gerenciado.

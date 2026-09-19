@@ -5,10 +5,19 @@ import cors from 'cors';
 import { fileURLToPath } from 'node:url';
 
 const app = express();
-const port = 3000;
+const port = globalThis.process.env.PORT || 3000;
 
-// Permite que o React (porta 5173) consuma esta API (porta 3000).
-app.use(cors());
+const origensPermitidas = (globalThis.process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((origem) => origem.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origem, callback) => {
+    if (!origem || origensPermitidas.includes(origem)) return callback(null, true);
+    return callback(new Error('Origem não autorizada pelo CORS.'));
+  },
+}));
 app.use(express.json());
 
 const databasePath = fileURLToPath(new URL('./noc_database.sqlite', import.meta.url));
